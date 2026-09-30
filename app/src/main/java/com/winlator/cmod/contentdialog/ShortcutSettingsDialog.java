@@ -556,6 +556,9 @@ public class ShortcutSettingsDialog extends ContentDialog implements DXVKConfigD
     private boolean isFieldSetLabel(String text) {
         return text.equalsIgnoreCase("DirectX") ||
                 text.equalsIgnoreCase("General") ||
+                text.equalsIgnoreCase("Codecs") ||
+                text.equalsIgnoreCase("vkBasalt") ||
+                text.equalsIgnoreCase("Builtin Decoder") ||
                 text.equalsIgnoreCase("Box64") ||
                 text.equalsIgnoreCase("Input Controls") ||
                 text.equalsIgnoreCase("Game Controller") ||
@@ -613,6 +616,10 @@ public class ShortcutSettingsDialog extends ContentDialog implements DXVKConfigD
         Spinner sFEXCoreVersion = view.findViewById(R.id.SFEXCoreVersion);
         Spinner sFEXCorePreset = view.findViewById(R.id.SFEXCorePreset);
         Spinner sStartupSelection = findViewById(R.id.SStartupSelection);
+        Spinner sBuiltinDecoder = findViewById(R.id.SBuiltinDecoder);
+        
+
+        // Set dark or light mode background for spinners
         sGraphicsDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sDXWrapper.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sAudioDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -625,6 +632,7 @@ public class ShortcutSettingsDialog extends ContentDialog implements DXVKConfigD
         sFEXCoreVersion.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sStartupSelection.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         applyDarkThemeToFormFields(view, isDarkMode);
+        sBuiltinDecoder.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
     }
 
