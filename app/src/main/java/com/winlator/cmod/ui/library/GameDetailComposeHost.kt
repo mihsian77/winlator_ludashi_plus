@@ -73,6 +73,8 @@ interface GameDetailCallbacks {
     fun onSaves()
     fun onFavorite(favorite: Boolean)
     fun onRemove()
+    fun onDownloadCover()
+    fun onClearCover()
 }
 
 object GameDetailComposeHost {
@@ -179,6 +181,11 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         DetailAction(Icons.Outlined.Folder, "Saves", Modifier.weight(1f), callbacks::onSaves)
+                        DetailAction(Icons.Outlined.Download, "Cover", Modifier.weight(1f), callbacks::onDownloadCover)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DetailAction(Icons.Outlined.DeleteOutline, "Clear cover", Modifier.weight(1f), callbacks::onClearCover)
                         DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.weight(1f), callbacks::onRemove, true)
                     }
                 }
@@ -212,6 +219,8 @@ private fun PortraitDetail(title: String, subtitle: String, artwork: Bitmap?, fa
             DetailAction(Icons.Outlined.Settings, "Configure", Modifier.fillMaxWidth(), callbacks::onConfigure)
             DetailAction(Icons.Outlined.PlayArrow, "Enter container", Modifier.fillMaxWidth(), callbacks::onArguments)
             DetailAction(Icons.Outlined.Folder, "Saves", Modifier.fillMaxWidth(), callbacks::onSaves)
+            DetailAction(Icons.Outlined.Download, "Download cover", Modifier.fillMaxWidth(), callbacks::onDownloadCover)
+            DetailAction(Icons.Outlined.DeleteOutline, "Clear cover", Modifier.fillMaxWidth(), callbacks::onClearCover)
             DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.fillMaxWidth(), callbacks::onRemove, true)
             Spacer(Modifier.height(12.dp))
         }

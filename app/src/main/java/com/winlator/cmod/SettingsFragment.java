@@ -95,6 +95,7 @@ public class SettingsFragment extends Fragment {
     private CheckBox cbXinputToggle;
 
     private CheckBox cbEnableBigPictureMode;
+    private CheckBox cbAutoDownloadCover;
     private CheckBox cbEnableCustomApiKey;
     private EditText etCustomApiKey;
 
@@ -181,6 +182,9 @@ public class SettingsFragment extends Fragment {
         // Initialize Big Picture Mode Checkbox
         cbEnableBigPictureMode = view.findViewById(R.id.CBEnableBigPictureMode);
         cbEnableBigPictureMode.setChecked(preferences.getBoolean("enable_big_picture_mode", false));
+
+        cbAutoDownloadCover = view.findViewById(R.id.CBAutoDownloadCover);
+        cbAutoDownloadCover.setChecked(preferences.getBoolean("auto_download_cover", false));
 
         initCustomApiKeySettings(view);
 
@@ -420,6 +424,7 @@ public class SettingsFragment extends Fragment {
 
             // Save Big Picture Mode setting
             editor.putBoolean("enable_big_picture_mode", ((CheckBox) view.findViewById(R.id.CBEnableBigPictureMode)).isChecked());
+            editor.putBoolean("auto_download_cover", ((CheckBox) view.findViewById(R.id.CBAutoDownloadCover)).isChecked());
             saveCustomApiKeySettings(editor);
 
             if (editor.commit()) {

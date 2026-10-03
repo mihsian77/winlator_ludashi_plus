@@ -130,6 +130,16 @@ public class GameDetailFragment extends Fragment {
                             if (shortcut.file.delete()) getParentFragmentManager().popBackStack();
                         });
                     }
+
+                    @Override
+                    public void onDownloadCover() {
+                        downloadCoverManually();
+                    }
+
+                    @Override
+                    public void onClearCover() {
+                        clearCover();
+                    }
                 }
         );
         content.post(this::applyDetailChrome);
@@ -148,6 +158,78 @@ public class GameDetailFragment extends Fragment {
         } catch (Exception ignored) {}
         String renderer = shortcut.getUseDisplayX() ? "DisplayX" : shortcut.getRendererNative() ? "EGL" : "Vulkan";
         return runtime + "  •  " + renderer;
+    }
+
+    private void downloadCoverManually() {
+        String baseName = FileUtils.getBasename(shortcut.file.getPath());
+        File cover = new File(Environment.getExternalStorageDirectory(), "Winlator/covers/" + baseName + ".png");
+        // 复用ShortcutsFragment的SteamGridDB下载逻辑
+        android.widget.Toast.makeText(requireContext(), "Searching cover on SteamGridDB...", android.widget.Toast.LENGTH_SHORT).show();
+        // 直接调用SteamGridDB API搜索并下载第一个结果
+        String apiKey = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getString("steamgrid_api_key", "0324c52513634547a7b32d6d323635d0");
+        retrofit2.Retrofit retrofit = new retrofit2.Retrofit.Builder()
+                .baseUrl("https://www.steamgriddb.com/api/v2/")
+                .client(new okhttp3.OkHttpClient())
+                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+                .build();
+        com.winlator.cmod.bigpicture.steamgrid.SteamGridDBApi api = retrofit.create(com.winlator.cmod.bigpicture.steamgrid.SteamGridDBApi.class);
+        api.searchGame("Bearer " + apiKey, shortcut.name).enqueue(new retrofit2.Callback<com.winlator.cmod.bigpicture.steamgrid.SteamGridSearchResponse>() {
+            @Override
+            public void onResponse(retrofit2.Call<com.winlator.cmod.bigpicture.steamgrid.SteamGridSearchResponse> call, retrofit2.Response<com.winlator.cmod.bigpicture.steamgrid.SteamGridSearchResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().data != null && !response.body().data.isEmpty()) {
+                    int gameId = response.body().data.get(0).id;
+                    api.getGridsByGameId("Bearer " + apiKey, gameId, "alternate", "600x900", "static").enqueue(new retrofit2.Callback<com.winlator.cmod.bigpicture.steamgrid.SteamGridGridsResponse>() {
+                        @Override
+                        public void onResponse(retrofit2.Call<com.winlator.cmod.bigpicture.steamgrid.SteamGridGridsResponse> call, retrofit2.Response<com.winlator.cmod.bigpicture.steamgrid.SteamGridGridsResponse> response) {
+                            if (response.isSuccessful() && response.body() != null && response.body().data != null && !response.body().data.isEmpty()) {
+                                String url = response.body().data.get(0).url;
+                                new Thread(() -> {
+                                    try {
+                                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                                        conn.connect();
+                                        android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeStream(conn.getInputStream());
+                                        if (bmp != null) {
+                                            if (cover.getParentFile() != null) cover.getParentFile().mkdirs();
+                                            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(cover)) {
+                                                bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos);
+                                            }
+                                            requireActivity().runOnUiThread(() -> {
+                                                android.widget.Toast.makeText(requireContext(), "Cover downloaded", android.widget.Toast.LENGTH_SHORT).show();
+                                                requireFragmentManager().beginTransaction().detach(GameDetailFragment.this).attach(GameDetailFragment.this).commit();
+                                            });
+                                        }
+                                    } catch (Exception e) { e.printStackTrace(); }
+                                }).start();
+                            }
+                        }
+                        @Override
+                        public void onFailure(retrofit2.Call<com.winlator.cmod.bigpicture.steamgrid.SteamGridGridsResponse> call, Throwable t) {}
+                    });
+                } else {
+                    android.widget.Toast.makeText(requireContext(), "No cover found", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override
+            public void onFailure(retrofit2.Call<com.winlator.cmod.bigpicture.steamgrid.SteamGridSearchResponse> call, Throwable t) {
+                android.widget.Toast.makeText(requireContext(), "Search failed", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void clearCover() {
+        String baseName = FileUtils.getBasename(shortcut.file.getPath());
+        File cover = new File(Environment.getExternalStorageDirectory(), "Winlator/covers/" + baseName + ".png");
+        File banner = new File(Environment.getExternalStorageDirectory(), "Winlator/banners/" + baseName + ".png");
+        boolean deleted = false;
+        if (cover.exists()) { cover.delete(); deleted = true; }
+        if (banner.exists()) { banner.delete(); deleted = true; }
+        if (deleted) {
+            android.widget.Toast.makeText(requireContext(), "Cover cleared", android.widget.Toast.LENGTH_SHORT).show();
+            requireFragmentManager().beginTransaction().detach(this).attach(this).commit();
+        } else {
+            android.widget.Toast.makeText(requireContext(), "No cover to clear", android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void runShortcut() {

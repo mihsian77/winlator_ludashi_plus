@@ -589,20 +589,32 @@ public class ShortcutsFragment extends Fragment {
     private void requestCover(Shortcut shortcut, File cover, File autoIcon) {
         final String coverKey = "cover:" + shortcut.file.getPath();
         if (!cover.exists() && artworkRequests.add(coverKey)) {
-            fetchCoverFromSteamGrid(shortcut, cover, () -> {
+            boolean autoDownload = androidx.preference.PreferenceManager
+                    .getDefaultSharedPreferences(requireContext())
+                    .getBoolean("auto_download_cover", false);
+            if (autoDownload) {
+                fetchCoverFromSteamGrid(shortcut, cover, () -> {
+                    artworkRequests.remove(coverKey);
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> refreshArtworkAndLauncherShortcuts(shortcut));
+                    }
+                }, () -> {
+                    artworkRequests.remove(coverKey);
+                    extractExeIcon(shortcut, autoIcon);
+                });
+            } else {
                 artworkRequests.remove(coverKey);
+                extractExeIcon(shortcut, autoIcon);
+            }
+        }
+    }
+
+    private void extractExeIcon(Shortcut shortcut, File autoIcon) {
+        File exeFile = resolveExeFile(shortcut);
+        if (exeFile != null && !autoIcon.exists()) {
+            ExeIconExtractor.extractAsync(exeFile, autoIcon, false, () -> {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> refreshArtworkAndLauncherShortcuts(shortcut));
-                }
-            }, () -> {
-                artworkRequests.remove(coverKey);
-                File exeFile = resolveExeFile(shortcut);
-                if (exeFile != null && !autoIcon.exists()) {
-                    ExeIconExtractor.extractAsync(exeFile, autoIcon, false, () -> {
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(() -> refreshArtworkAndLauncherShortcuts(shortcut));
-                        }
-                    });
                 }
             });
         }
@@ -611,12 +623,19 @@ public class ShortcutsFragment extends Fragment {
     private void requestBanner(Shortcut shortcut, File banner) {
         final String bannerKey = "banner:" + shortcut.file.getPath();
         if (!banner.exists() && artworkRequests.add(bannerKey)) {
-            fetchBannerFromSteamGrid(shortcut, banner, () -> {
+            boolean autoDownload = androidx.preference.PreferenceManager
+                    .getDefaultSharedPreferences(requireContext())
+                    .getBoolean("auto_download_cover", false);
+            if (autoDownload) {
+                fetchBannerFromSteamGrid(shortcut, banner, () -> {
+                    artworkRequests.remove(bannerKey);
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> refreshArtworkAndLauncherShortcuts(shortcut));
+                    }
+                }, () -> artworkRequests.remove(bannerKey));
+            } else {
                 artworkRequests.remove(bannerKey);
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> refreshArtworkAndLauncherShortcuts(shortcut));
-                }
-            }, () -> artworkRequests.remove(bannerKey));
+            }
         }
     }
 
