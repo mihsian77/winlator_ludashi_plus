@@ -379,12 +379,6 @@
                         android:layout_height="wrap_content"
                         android:text="Enable Big Picture Mode on App Launch" />
 
-                    <CheckBox
-                        android:id="@+id/CBAutoDownloadCover"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Auto-download game cover from SteamGridDB" />
-
                     <FrameLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">

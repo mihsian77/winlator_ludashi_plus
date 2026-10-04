@@ -97,6 +97,7 @@ data class SettingsModel(
     val winlatorPath: String,
     val shortcutPath: String,
     val bigPicture: Boolean,
+    val autoDownloadCover: Boolean,
     val cursorSpeedPercent: Int,
     val cursorLock: Boolean,
     val xInput: Boolean,
@@ -257,6 +258,8 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("big-picture") {
                 GroupCard {
                     ToggleRow("Enable Big Picture Mode on App Launch", model.bigPicture) { callbacks.onBooleanChanged("enable_big_picture_mode", it) }
+                    GroupDivider()
+                    ToggleRow("Auto-download game cover from SteamGridDB", model.autoDownloadCover) { callbacks.onBooleanChanged("auto_download_cover", it) }
                     GroupDivider()
                     ToggleRow("Set SteamGrid API Key? (Cover Art)", model.customApiKeyEnabled) { callbacks.onBooleanChanged("enable_custom_api_key", it) }
                 }

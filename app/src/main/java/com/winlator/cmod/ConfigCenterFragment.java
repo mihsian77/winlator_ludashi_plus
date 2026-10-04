@@ -956,9 +956,9 @@ public class ConfigCenterFragment extends Fragment {
                 sb.append('\n');
             }
             // Vulkan驱动：驱动ID存储在 rendererDriverId 字段（默认"system"表示用系统驱动），
-            // 仅当显式选择了非系统驱动时才显示。turnip-26.2.0-b9 格式化为 turnip 26.2.0-b9。
+            // turnip-26.2.0-b9 格式化为 turnip 26.2.0-b9。始终显示，包括默认值。
             String rendererDriverId = tmp.getRendererDriverId();
-            if (notEmpty(rendererDriverId) && !"system".equals(rendererDriverId)) {
+            if (notEmpty(rendererDriverId)) {
                 sb.append("• Vulkan驱动: ").append(formatVulkanDriver(rendererDriverId)).append('\n');
             }
             // DXWrapper（附DXVK和VKD3D版本）
