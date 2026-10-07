@@ -8,7 +8,11 @@
 #include <cmath>
 #include <mutex>
 #include <dlfcn.h>
-#include <unordered_set>
+#include <unordered_map>
+#include <deque>
+#include <memory>
+#include <utility>
+#include <unistd.h>
 #include <condition_variable>
 #include <android/choreographer.h>
 #include <android/performance_hint.h>
@@ -64,7 +68,6 @@ class DisplayX {
             private:
                 std::unordered_map<Window *, std::deque<std::unique_ptr<PresentRequest>>> mUpdatableWindows;
                 std::vector<Window *> mUpdatedWindows;
-                //Window *lastUpdatedWindow = nullptr;
 
             public:
                 void push(std::unique_ptr<PresentRequest> request, bool singleElement) {
@@ -72,8 +75,8 @@ class DisplayX {
                         return;
                         
                     auto &queue = mUpdatableWindows[request->window];    
+                    mUpdatedWindows.erase(std::remove(mUpdatedWindows.begin(), mUpdatedWindows.end(), request->window), mUpdatedWindows.end());
                     mUpdatedWindows.push_back(request->window);
-                    //lastUpdatedWindow = request->window;
                     
                     if (queue.empty()) {
                         queue.push_back(std::move(request));
@@ -94,7 +97,7 @@ class DisplayX {
                 }
                 
                 void removeWindow(Window *window) {
-                    if (window)
+                    if (!window)
                         return;
                         
                     auto it = mUpdatableWindows.find(window);
@@ -108,15 +111,8 @@ class DisplayX {
                     
                     it->second.clear();
                     
-                    auto itv = std::find(mUpdatedWindows.begin(), mUpdatedWindows.end(), window);
-                    if (itv != mUpdatedWindows.end()) 
-                        mUpdatedWindows.erase(itv);
-                        
-                    /*
-                    if (lastUpdatedWindow == window)
-                        lastUpdatedWindow = nullptr;
-                    */    
-                        
+                    mUpdatedWindows.erase(std::remove(mUpdatedWindows.begin(), mUpdatedWindows.end(), window), mUpdatedWindows.end());
+
                     mUpdatableWindows.erase(it);    
                 }
 

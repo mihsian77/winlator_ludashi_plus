@@ -1,5 +1,9 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.settings.parseWinComponents
+import com.winlator.cmod.ui.settings.serializeWinComponents
+import com.winlator.cmod.ui.settings.DecoderSettings
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -38,7 +42,7 @@ internal fun ContainerAdvancedPane(containerId: Int) {
     val pages = listOf("Environment", "Components", "Startup & Input", "CPU")
     var environment by remember(container.getEnvVars()) { mutableStateOf(container.getEnvVars()) }
     val components = remember(container.getWinComponents()) {
-        mutableStateMapOf<String, Int>().apply { putAll(parseComponents(container.getWinComponents())) }
+        mutableStateMapOf<String, String>().apply { putAll(parseWinComponents(container.getWinComponents())) }
     }
     var startup by remember { mutableStateOf(container.getStartupSelection().toInt().coerceIn(0, 2)) }
     var exclusive by remember { mutableStateOf(container.isExclusiveXInput()) }
@@ -81,17 +85,20 @@ internal fun ContainerAdvancedPane(containerId: Int) {
             "Components" -> SettingsCard {
                 advancedComponents.forEachIndexed { index, (key, label) ->
                     val entries = listOf("Builtin (Wine)", "Native (Windows)")
-                    val selected = entries[(components[key] ?: 0).coerceIn(0, 1)]
+                    val selected = entries[(components[key]?.toIntOrNull() ?: 0).coerceIn(0, 1)]
                     SettingChoice(label, selected, entries) { value ->
-                        components[key] = entries.indexOf(value).coerceAtLeast(0)
+                        components[key] = entries.indexOf(value).coerceAtLeast(0).toString()
                         container.setWinComponents(
-                            advancedComponents.joinToString(",") { (componentKey, _) ->
-                                "$componentKey=${components[componentKey] ?: 0}"
-                            }
+                            serializeWinComponents(components)
                         )
                         container.saveData()
                     }
                     if (index != advancedComponents.lastIndex) SettingsDivider()
+                }
+                SettingsDivider()
+                DecoderSettings(components) {
+                    container.setWinComponents(serializeWinComponents(components))
+                    container.saveData()
                 }
             }
 
@@ -149,18 +156,6 @@ internal fun ContainerAdvancedPane(containerId: Int) {
             }
         }
     }
-}
-
-private fun parseComponents(raw: String): Map<String, Int> {
-    val result = mutableMapOf<String, Int>()
-    raw.split(',').forEach { token ->
-        val split = token.indexOf('=')
-        if (split > 0) {
-            result[token.substring(0, split)] = token.substring(split + 1).toIntOrNull()?.coerceIn(0, 1) ?: 0
-        }
-    }
-    advancedComponents.forEach { (key, _) -> result.putIfAbsent(key, 0) }
-    return result
 }
 
 private fun cpuSelection(raw: String?, count: Int): List<Boolean> {
