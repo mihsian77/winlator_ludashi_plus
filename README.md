@@ -10,7 +10,7 @@ Winlator is an Android application that lets you run Windows (x86\_64) applicati
 
 This is a fork of the **Winlator Bionic** project by [Pipetto-crypto](https://github.com/Pipetto-crypto/winlator), with Ludashi performance build variants maintained by [squalle0nhart](https://github.com/squalle0nhart/winlator_ludashi_plus).
 
-> **本仓库为 winlator_ludashi_plus 的中文增强分支**，fork 自 [squalle0nhart/winlator_ludashi_plus](https://github.com/squalle0nhart/winlator_ludashi_plus)。相对上游的改动：xxx（汉化内容 / 构建调整，请按实际情况补充）。
+> **本仓库为 winlator_ludashi_plus 的中文增强分支**，fork 自 [squalle0nhart/winlator_ludashi_plus](https://github.com/squalle0nhart/winlator_ludashi_plus)。相对上游的改动：同步上游修复，修复 GameDetailComposeHost 缺少 Download 图标导入导致的编译失败。
 
 ## APK Build Explanations
 
