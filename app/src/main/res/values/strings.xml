@@ -818,4 +818,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
         Default <b>50</b>. Only has any effect when DYNAMICL1CACHE is on.
         <br /><br /><b>When to change:</b> Raise it if you get a hitch shortly after a level load, which usually means the cache shrank and then had to grow straight back. Lower it to hand memory back sooner. It does nothing at all unless DYNAMICL1CACHE is on.
         ]]></string>
+    <string name="codecs">Codecs</string>
+    <string name="builtin_decoder">Builtin Decoder</string>
+    <string name="software_decoding">Enable Software Decoding(For broken cutscenes)</string>
 </resources>

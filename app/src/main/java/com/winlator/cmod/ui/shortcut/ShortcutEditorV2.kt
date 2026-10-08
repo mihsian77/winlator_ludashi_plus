@@ -2,6 +2,10 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.ui.settings.parseWinComponents
+import com.winlator.cmod.ui.settings.serializeWinComponents
+import com.winlator.cmod.ui.settings.DecoderSettings
+
 import com.winlator.cmod.core.DXWrapper
 
 import android.app.Activity
@@ -299,8 +303,8 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
             else -> "None"
         }
     )
-    val components = mutableStateMapOf<String, Int>().apply {
-        putAll(parseShortcutComponentsV2(shortcut.getExtra("wincomponents", container.getWinComponents())))
+    val components = mutableStateMapOf<String, String>().apply {
+        putAll(parseWinComponents(shortcut.getExtra("wincomponents", container.getWinComponents())))
     }
 
     var revision by mutableIntStateOf(0)
@@ -442,7 +446,7 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     }
 
     fun saveComponents() {
-        shortcut.putExtra("wincomponents", shortcutComponentRowsV2.joinToString(",") { (key, _) -> "$key=${components[key] ?: 0}" })
+        shortcut.putExtra("wincomponents", serializeWinComponents(components))
         save()
     }
 }
@@ -1301,12 +1305,14 @@ private fun ShortcutCategoryV2(
             SettingsCard {
                 shortcutComponentRowsV2.forEachIndexed { index, (key, label) ->
                     val entries = listOf("Builtin (Wine)", "Native (Windows)")
-                    val selected = entries[(s.components[key] ?: 0).coerceIn(0, 1)]
+                    val selected = entries[(s.components[key]?.toIntOrNull() ?: 0).coerceIn(0, 1)]
                     SettingChoice(label, selected, entries) {
-                        s.components[key] = entries.indexOf(it).coerceAtLeast(0); s.saveComponents()
+                        s.components[key] = entries.indexOf(it).coerceAtLeast(0).toString(); s.saveComponents()
                     }
                     if (index != shortcutComponentRowsV2.lastIndex) SettingsDivider()
                 }
+                SettingsDivider()
+                DecoderSettings(s.components) { s.saveComponents() }
             }
         }
     }
@@ -1422,16 +1428,6 @@ private fun loadShortcutSoundFontsV2(context: Context): List<String> {
     val result = linkedSetOf("Disabled", MidiManager.DEFAULT_SF2_FILE)
     MidiManager.getSoundFontDir(context).listFiles()?.filter { it.isFile }?.sortedBy { it.name.lowercase() }?.forEach { result.add(it.name) }
     return result.toList()
-}
-
-private fun parseShortcutComponentsV2(raw: String): Map<String, Int> {
-    val result = mutableMapOf<String, Int>()
-    raw.split(',').forEach { token ->
-        val split = token.indexOf('=')
-        if (split > 0) result[token.substring(0, split)] = token.substring(split + 1).toIntOrNull()?.coerceIn(0, 1) ?: 0
-    }
-    shortcutComponentRowsV2.forEach { (key, _) -> result.putIfAbsent(key, 0) }
-    return result
 }
 
 private fun renameShortcutV2(shortcut: Shortcut, requested: String) {

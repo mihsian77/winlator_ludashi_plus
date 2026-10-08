@@ -2,6 +2,10 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.settings.parseWinComponents
+import com.winlator.cmod.ui.settings.serializeWinComponents
+import com.winlator.cmod.ui.settings.DecoderSettings
+
 import com.winlator.cmod.core.DXWrapper
 
 import android.content.Context
@@ -261,8 +265,8 @@ private class ContainerEditorStateV2(
     var envVars by mutableStateOf(
         if (shouldAddMesaGlOverride) envPut(initialEnvVars, "MESA_GL_VERSION_OVERRIDE", "3.3") else initialEnvVars
     )
-    val components = mutableStateMapOf<String, Int>().apply {
-        putAll(parseContainerComponentsV2(editing?.winComponents ?: Container.DEFAULT_WINCOMPONENTS))
+    val components = mutableStateMapOf<String, String>().apply {
+        putAll(parseWinComponents(editing?.winComponents ?: Container.DEFAULT_WINCOMPONENTS))
     }
 
     fun graphics(key: String, value: String) {
@@ -488,7 +492,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.putExtra("oboeAdaptive", if (state.oboeAdaptive) "1" else "0")
         container.putExtra("oboeExclusive", if (state.oboeExclusive) "1" else "0")
         container.setEmulator(if (arm64) if (state.emulator == "FEXCore") "FEXCore" else "Box64" else "Box64")
-        container.setWinComponents(serializeContainerComponentsV2(state.components))
+        container.setWinComponents(serializeWinComponents(state.components))
         container.setShowFPS(state.hudMode != 0)
         container.setFullscreenStretched(state.fullscreen)
         container.setExclusiveXInput(state.exclusive)
@@ -543,7 +547,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                 put("dxwrapperConfig", state.wrapperConfig)
                 put("audioDriver", state.audio)
                 put("emulator", if (arm64) if (state.emulator == "FEXCore") "FEXCore" else "Box64" else "Box64")
-                put("wincomponents", serializeContainerComponentsV2(state.components))
+                put("wincomponents", serializeWinComponents(state.components))
                 put("drives", state.drives)
                 put("showFPS", state.hudMode != 0)
                 put("fullscreenStretched", state.fullscreen)
@@ -1142,10 +1146,12 @@ private fun ContainerCategoryV2(
             SettingsCard {
                 containerComponentRowsV2.forEachIndexed { index, (key, label) ->
                     val entries = listOf("Builtin (Wine)", "Native (Windows)")
-                    val selected = entries[(s.components[key] ?: 0).coerceIn(0, 1)]
-                    SettingChoice(label, selected, entries) { s.components[key] = entries.indexOf(it).coerceAtLeast(0) }
+                    val selected = entries[(s.components[key]?.toIntOrNull() ?: 0).coerceIn(0, 1)]
+                    SettingChoice(label, selected, entries) { s.components[key] = entries.indexOf(it).coerceAtLeast(0).toString() }
                     if (index != containerComponentRowsV2.lastIndex) SettingsDivider()
                 }
+                SettingsDivider()
+                DecoderSettings(s.components) {}
             }
         }
     }
@@ -1222,20 +1228,6 @@ private fun loadContainerSoundFontsV2(context: Context): List<String> {
     val result = linkedSetOf("Disabled", MidiManager.DEFAULT_SF2_FILE)
     MidiManager.getSoundFontDir(context).listFiles()?.filter(File::isFile)?.sortedBy { it.name.lowercase() }?.forEach { result.add(it.name) }
     return result.toList()
-}
-
-private fun parseContainerComponentsV2(raw: String): Map<String, Int> {
-    val result = mutableMapOf<String, Int>()
-    raw.split(',').forEach { token ->
-        val split = token.indexOf('=')
-        if (split > 0) result[token.substring(0, split)] = token.substring(split + 1).toIntOrNull()?.coerceIn(0, 1) ?: 0
-    }
-    containerComponentRowsV2.forEach { (key, _) -> result.putIfAbsent(key, 0) }
-    return result
-}
-
-private fun serializeContainerComponentsV2(values: Map<String, Int>): String = containerComponentRowsV2.joinToString(",") { (key, _) ->
-    "$key=${values[key] ?: 0}"
 }
 
 private fun containerDesktopThemeValueV2(theme: String, background: String, wallpaperStamp: Long): String {
