@@ -1405,6 +1405,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (shortcut != null)
                 envVars.putAll(shortcut.getExtra("envVars"));
 
+            KeyValueSet wincomponents = new KeyValueSet(shortcut != null
+                    ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents());
+            if ("ffmpeg".equals(wincomponents.get("builtinDecoder"))) envVars.put("WINE_USE_DMO", "1");
+            if ("1".equals(wincomponents.get("softwareDecoding"))) envVars.put("WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "1");
+
             if ("1".equals(graphicsDriverConfig.get("timelineSemaphores")))
                 envVars.remove("DXVK_DISABLE_TIMELINE_SEMAPHORES");
             else
@@ -3083,7 +3088,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
 
         File graphicsRuntimeMarker = new File(rootDir,
-                "usr/lib/.winlator-graphics-runtime-a20866cf-v3");
+                "usr/lib/.winlator-graphics-runtime-89e002fc-v4");
         String wrapperArchive = resolveGraphicsWrapperArchiveName(graphicsWrapper);
         boolean installCommonRuntime = firstTimeBoot || !graphicsRuntimeMarker.isFile();
         boolean wrapperChanged = !wrapperArchive.equals(container.getExtra("installedGraphicsWrapper"));
@@ -3100,7 +3105,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 container.putExtra("installedGraphicsWrapper", wrapperArchive);
                 container.saveData();
                 if (installCommonRuntime) FileUtils.writeString(graphicsRuntimeMarker,
-                        "wrapper=selectable;extra_libs=a20866cf;layers=9d57736d;opengl=split-v1");
+                        "wrapper=selectable;extra_libs=89e002fc;layers=9d57736d;opengl=split-v1");
             }
         }
 
@@ -3393,12 +3398,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents())
                     : container.getWinComponents();
 
-            Iterator<String[]> oldWinComponentsIter = new KeyValueSet(
-                    container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
+            KeyValueSet oldWinComponents = new KeyValueSet(
+                    container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS));
+            
+            KeyValueSet wincomponentsSet = new KeyValueSet(wincomponents);
 
-            for (String[] wincomponent : new KeyValueSet(wincomponents)) {
-                if (wincomponent[1].equals(oldWinComponentsIter.next()[1]) && !firstTimeBoot)
-                    continue;
+            for (String[] wincomponent : wincomponentsSet) {
+                if (wincomponent[0].equals("builtinDecoder") || wincomponent[0].equals("softwareDecoding")) continue;
+                if (wincomponent[1].equals(oldWinComponents.get(wincomponent[0])) && !firstTimeBoot) continue;
                 String identifier = wincomponent[0];
                 boolean useNative = wincomponent[1].equals("1");
 
@@ -3417,7 +3424,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 WineUtils.overrideWinComponentDlls(this, container, identifier, useNative);
                 WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative, this);
             }
-
+            
             if (!dlls.isEmpty())
                 restoreOriginalDllFiles(dlls.toArray(new String[0]));
         } catch (JSONException e) {

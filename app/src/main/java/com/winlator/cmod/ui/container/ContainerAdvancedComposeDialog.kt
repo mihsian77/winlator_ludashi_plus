@@ -1,5 +1,9 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.settings.parseWinComponents
+import com.winlator.cmod.ui.settings.serializeWinComponents
+import com.winlator.cmod.ui.settings.DecoderSettings
+
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color as AndroidColor
@@ -150,7 +154,7 @@ private fun AdvancedContainerScreen(containerId: Int, onCancel: () -> Unit, onSa
         mutableStateListOf<AdvancedEnvEntry>().apply { addAll(parseAdvancedEnv(container.getEnvVars())) }
     }
     val components = remember(container.getWinComponents()) {
-        mutableStateMapOf<String, Int>().apply { putAll(parseComponents(container.getWinComponents())) }
+        mutableStateMapOf<String, String>().apply { putAll(parseWinComponents(container.getWinComponents())) }
     }
     var startup by remember { mutableIntStateOf(container.getStartupSelection().toInt().coerceIn(0, 2)) }
     var exclusive by remember { mutableStateOf(container.isExclusiveXInput()) }
@@ -247,9 +251,7 @@ private fun AdvancedContainerScreen(containerId: Int, onCancel: () -> Unit, onSa
                             container.setEnvVars(envRows.joinToString(" ") {
                                 "${it.name.trim()}=${it.value.trim().replace(" ", "")}"
                             })
-                            container.setWinComponents(componentRows.joinToString(",") { (key, _) ->
-                                "$key=${components[key] ?: 0}"
-                            })
+                            container.setWinComponents(serializeWinComponents(components))
                             container.setStartupSelection(startup.toByte())
                             container.setExclusiveXInput(exclusive)
                             var inputType = 0
@@ -356,14 +358,15 @@ private fun AdvancedEnvRow(item: AdvancedEnvEntry, onValue: (String) -> Unit, on
 }
 
 @Composable
-private fun AdvancedComponentsPage(values: MutableMap<String, Int>) {
+private fun AdvancedComponentsPage(values: MutableMap<String, String>) {
     val entries = listOf("Builtin (Wine)", "Native (Windows)")
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(10.dp)) {
         items(componentRows) { (key, label) ->
-            val selected = (values[key] ?: 0).coerceIn(0, 1)
-            AdvancedChoice(label, entries[selected], entries) { values[key] = entries.indexOf(it).coerceAtLeast(0) }
+            val selected = (values[key]?.toIntOrNull() ?: 0).coerceIn(0, 1)
+            AdvancedChoice(label, entries[selected], entries) { values[key] = entries.indexOf(it).coerceAtLeast(0).toString() }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
         }
+        item { DecoderSettings(values) {} }
     }
 }
 
@@ -530,16 +533,6 @@ private fun parseAdvancedEnv(raw: String): List<AdvancedEnvEntry> {
         val split = token.indexOf('=')
         if (split <= 0) null else AdvancedEnvEntry(token.substring(0, split), token.substring(split + 1))
     }
-}
-
-private fun parseComponents(raw: String): Map<String, Int> {
-    val result = mutableMapOf<String, Int>()
-    raw.split(',').forEach { token ->
-        val split = token.indexOf('=')
-        if (split > 0) result[token.substring(0, split)] = token.substring(split + 1).toIntOrNull()?.coerceIn(0, 1) ?: 0
-    }
-    componentRows.forEach { (key, _) -> if (key !in result) result[key] = 0 }
-    return result
 }
 
 private fun cpuSelection(raw: String?, count: Int): List<Boolean> {

@@ -9,3 +9,13 @@ Imported range: [`60c291b9..f194ef97`](https://github.com/Pipetto-crypto/winlato
 - Retained equivalent existing features: FEX Unix-library trust entries; container/shortcut renderer selection; EGL surface format and nearest/bilinear filtering; DisplayX configuration and wrapper environment variables. EGL now honors the chosen drawable surface format at launch.
 
 Validation: `./gradlew assembleDebug testDebugUnitTest --console=plain`. The source wrapper matches the target Git blob and the asset packaged in the debug APK. Rendering still needs validation on an Android device.
+
+## October update
+
+Imported `2180ec05..89e002fc` from `winlator_bionic`: DisplayX protocol/mailbox updates, Box64 0.4.5, and Proton 9 winedmo container patterns. Kept Box64/WoWBox64 0.4.2 and FEX 2601 available.
+
+Updated only `usr/lib/displayx_layer.so` inside the split `extra_libs.tzst` asset; its bytes match upstream `89e002fc`. Bumped the runtime extraction marker for existing containers. Preserved this fork’s fullscreen handling, atomic FPS state, and presentation wakeups. Fixed queue removal and duplicate pending-window entries.
+
+Decoder controls work in the legacy and Compose container/shortcut editors. Component values retain decoder strings, compare installed DLL settings by key, and apply decoder environment flags on every launch.
+
+Validation: debug APK and unit tests pass; the host DisplayX queue check covers mailbox replacement, FIFO order, window removal, and fence closure. Device rendering and cutscene playback still need an Android device.
