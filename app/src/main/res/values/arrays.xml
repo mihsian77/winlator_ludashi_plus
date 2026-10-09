@@ -60,6 +60,7 @@
         <item>None</item>
     </string-array>
     <string-array name="dxvk_version_entries">
+        <item>1.10.3-pandxvk.12</item>
         <item>1.10.3-pandxvk.10</item>
         <item>1.10.3-pandxvk.9-1</item>
         <item>1.10.3-pandxvk.9</item>
