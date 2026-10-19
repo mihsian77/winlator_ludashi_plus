@@ -54,7 +54,6 @@ public class TouchpadView extends View {
     private static final Byte EFFECTIVE_TOUCH_DISTANCE = 20;
     private float resolutionScale;
     private static final int UPDATE_FORM_DELAYED_TIME = 50;
-    private boolean mouseEnabled = true;
 
     private Handler timeoutHandler; // Reference to the activity's timeout handler
     private Runnable hideControlsRunnable; // Runnable to hide the controls
@@ -105,12 +104,11 @@ public class TouchpadView extends View {
     }
 
     private void updateXform(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {
-        int fullscreenMode = xServer.getXServerView().getFullscreenMode();
         ViewTransformation viewTransformation = new ViewTransformation();
-        viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight, fullscreenMode);
+        viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight);
 
         float invAspect = 1.0f / viewTransformation.aspect;
-        if (fullscreenMode != ViewTransformation.FULLSCREEN_STRETCH) {
+        if (!xServer.getXServerView().isFullscreen()) {
             XForm.makeTranslation(xform, -viewTransformation.viewOffsetX, -viewTransformation.viewOffsetY);
             XForm.scale(xform, invAspect, invAspect);
         } else
@@ -168,9 +166,6 @@ public class TouchpadView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        // If mouse is disabled, ignore all input
-        if (!mouseEnabled) return true;
-        
         boolean isTouchscreenMode = preferences.getBoolean("touchscreen_toggle", false);
 
         // Reset the timeout timer to keep controls visible
@@ -243,13 +238,13 @@ public class TouchpadView extends View {
 
     private void handleStylusLeftClick(MotionEvent event) {
         float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-        xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
+        xServer.injectPointerWarp((int) transformedPoint[0], (int) transformedPoint[1]);
         xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
     }
 
     private void handleStylusRightClick(MotionEvent event) {
         float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-        xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
+        xServer.injectPointerWarp((int) transformedPoint[0], (int) transformedPoint[1]);
         xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
     }
 
@@ -282,7 +277,7 @@ public class TouchpadView extends View {
                 if (simTouchScreen) {
                     final Runnable clickDelay = () -> {
                         if (continueClick) {
-                            xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
+                            xServer.injectPointerWarp(lastTouchedPosX, lastTouchedPosY);
                             xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
                         }
                     };
@@ -391,7 +386,7 @@ public class TouchpadView extends View {
         if (xServer.isRelativeMouseMovement())
             xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
         else
-            xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
+            xServer.injectPointerWarp((int) transformedPoint[0], (int) transformedPoint[1]); // new touch is a jump, not raw motion
 
         // Handle long press for right click (or use a dedicated method to detect long press)
         if (event.getPointerCount() == 1) {
@@ -564,44 +559,6 @@ public class TouchpadView extends View {
         this.sensitivity = sensitivity;
     }
 
-    private int lastMouseMoveX;
-    private int lastMouseMoveY;
-
-    public void mouseMove(float x, float y, int action) {
-        float[] transformedPoint = XForm.transformPoint(xform, x, y);
-        int tx = (int)transformedPoint[0];
-        int ty = (int)transformedPoint[1];
-
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                lastMouseMoveX = tx;
-                lastMouseMoveY = ty;
-                break;
-            case MotionEvent.ACTION_MOVE: {
-                float dxF = (tx - lastMouseMoveX) * sensitivity;
-                if (Math.abs(dxF) > CURSOR_ACCELERATION_THRESHOLD) dxF *= CURSOR_ACCELERATION;
-                float dyF = (ty - lastMouseMoveY) * sensitivity;
-                if (Math.abs(dyF) > CURSOR_ACCELERATION_THRESHOLD) dyF *= CURSOR_ACCELERATION;
-                int dx = Mathf.roundPoint(dxF);
-                int dy = Mathf.roundPoint(dyF);
-                lastMouseMoveX = tx;
-                lastMouseMoveY = ty;
-
-                if (dx != 0 || dy != 0) {
-                    if (xServer.isRelativeMouseMovement())
-                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
-                    else
-                        xServer.injectPointerMoveDelta(dx, dy);
-                }
-                break;
-            }
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-            default:
-                break;
-        }
-    }
-
     public boolean isPointerButtonLeftEnabled() {
         return pointerButtonLeftEnabled;
     }
@@ -642,7 +599,7 @@ public class TouchpadView extends View {
                         if (xServer.isRelativeMouseMovement())
                             xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEDOWN, 0, 0, 0);
                         else
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE);
+                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE); // Add this line for middle mouse button press
                     }
                     handled = true;
                     break;
@@ -661,7 +618,7 @@ public class TouchpadView extends View {
                         if (xServer.isRelativeMouseMovement())
                             xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEUP, 0, 0, 0);
                         else
-                            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE);
+                            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE); // Add this line for middle mouse button release
                     }
                     handled = true;
                     break;
@@ -739,9 +696,5 @@ public class TouchpadView extends View {
     public void toggleFullscreen() {
         new Handler().postDelayed(() -> updateXform(getWidth(), getHeight(), xServer.screenInfo.width, xServer.screenInfo.height),
                 UPDATE_FORM_DELAYED_TIME);
-    }
-    
-    public void setMouseEnabled(boolean enabled) {
-        this.mouseEnabled = enabled;
     }
 }
