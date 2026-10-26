@@ -290,10 +290,10 @@ public class GameRestorePackageManager {
         try {
             // BUG3：导入进度重新分配 0-100%
             // 0-10%：解压并解析metadata
-            callback.onProgress(3, "解析数据包...");
+            callback.onProgress(3, "解压数据包: 解析中...");
             unzipFile(packageFile, tempDir);
 
-            callback.onProgress(7, "读取元数据...");
+            callback.onProgress(7, "解压数据包: 读取元数据...");
             File metadataFile = new File(tempDir, METADATA_FILE);
             if (!metadataFile.exists()) throw new Exception("数据包缺少 metadata.json");
             JSONObject metadata = new JSONObject(FileUtils.readString(metadataFile));
@@ -325,10 +325,10 @@ public class GameRestorePackageManager {
                 executableName = shortcutJson.optString("executableName", "");
                 // v4隐私保护：不再读取executablePath本地路径，导入时路径由系统自动生成
             }
-            callback.onProgress(10, "元数据解析完成");
+            callback.onProgress(10, "解压数据包: 完成");
 
             // 10-30%：创建容器
-            callback.onProgress(15, "创建容器...");
+            callback.onProgress(15, "创建容器: 准备中...");
 
             ContainerManager manager = new ContainerManager(context);
             ContentsManager contentsManager = new ContentsManager(context);
@@ -375,13 +375,13 @@ public class GameRestorePackageManager {
             newContainer.putExtra("box64Version", null);
             newContainer.putExtra("fexcoreVersion", null);
 
-            callback.onProgress(24, "写入容器配置...");
-            callback.onProgress(25, "容器配置已加载");
+            callback.onProgress(24, "创建容器: 写入配置...");
+            callback.onProgress(25, "创建容器: 配置已加载");
 
             // 30-50%：还原Wine运行环境（含子进度）
             String containerWineVersion = newContainer.getWineVersion();
             if (containsWineRuntime) {
-                callback.onProgress(32, "还原Wine运行环境（数据包内置，正在复制.wine目录）...");
+                callback.onProgress(32, "还原环境: 复制Wine目录...");
                 File srcWineRuntime = new File(tempDir, "wineruntime");
                 File destWineDir = new File(newContainerDir, ".wine");
                 if (srcWineRuntime.exists()) {
@@ -396,7 +396,7 @@ public class GameRestorePackageManager {
                                 File destItem = new File(destWineDir, item.getName());
                                 // P2修复8：复制前先回调当前文件名，避免大目录复制期间进度条看似卡住
                                 int preP = 32 + (int) ((doneTop / (float) Math.max(1, totalTop)) * 14);
-                                callback.onProgress(Math.min(46, preP), "正在复制: " + item.getName());
+                                callback.onProgress(Math.min(46, preP), "还原环境: 复制 " + item.getName());
                                 try {
                                     copyDirectoryPreservingSymlinks(item, destItem);
                                 } catch (Exception e) {
@@ -404,7 +404,7 @@ public class GameRestorePackageManager {
                                 }
                                 doneTop++;
                                 int p = 32 + (int) ((doneTop / (float) Math.max(1, totalTop)) * 14);
-                                callback.onProgress(Math.min(46, p), "还原Wine运行环境: " + item.getName());
+                                callback.onProgress(Math.min(46, p), "还原环境: 复制 " + item.getName());
                             }
                         }
                         if (totalTop == 0) {
@@ -414,7 +414,7 @@ public class GameRestorePackageManager {
                         throw new Exception("Wine运行环境还原失败: " + e.getMessage());
                     }
                     // v7：修复dosdevices符号链接、注册表/ini占位并设置目录权限
-                    callback.onProgress(47, "重建盘符链接...");
+                    callback.onProgress(47, "还原环境: 重建盘符链接...");
                     fixWineEnvironment(destWineDir);
                     // BUG5：重建z:符号链接指向新容器的正确位置（旧链接指向旧设备绝对路径，已断裂）
                     rebuildZDriveSymlink(destWineDir, newContainerDir);
@@ -440,12 +440,12 @@ public class GameRestorePackageManager {
                         callback.onWarning("系统DLL补全失败: " + e.getMessage());
                     }
 
-                    callback.onProgress(48, "Wine运行环境还原成功");
+                    callback.onProgress(48, "还原环境: 完成");
                 } else {
                     throw new Exception("数据包标记包含Wine运行环境，但未找到wineruntime目录");
                 }
             } else {
-                callback.onProgress(30, "创建容器（提取Wine运行环境）...");
+                callback.onProgress(30, "创建容器: 提取Wine环境...");
                 boolean patternExtracted = manager.extractContainerPatternFile(
                         newContainer, containerWineVersion, contentsManager, newContainerDir, null);
 
@@ -458,15 +458,15 @@ public class GameRestorePackageManager {
                 File destWineDir = new File(newContainerDir, ".wine");
                 fixWineEnvironment(destWineDir);
                 rebuildZDriveSymlink(destWineDir, newContainerDir);
-                callback.onProgress(48, "容器创建成功，ID: " + newId);
+                callback.onProgress(48, "创建容器: 完成，ID: " + newId);
             }
 
             newContainer.saveData();
-            callback.onProgress(50, "容器已保存");
+            callback.onProgress(50, "创建容器: 已保存");
 
             // P0防护：导入后完整性校验，确保容器配置已落盘、关键运行环境就绪，
             // 缺失项通过onWarning上报（不阻断导入，但帮助定位闪退根因）。
-            callback.onProgress(51, "校验完整性...");
+            callback.onProgress(51, "校验: 完整性检查...");
             verifyContainerIntegrity(newContainer, newContainerDir, containsWineRuntime, callback);
 
             // BUG1修复：将新创建的容器注册到 ContainerManager 内存列表，
@@ -492,7 +492,7 @@ public class GameRestorePackageManager {
 
             // 50-60%：还原注册表
             if (containsRegistry) {
-                callback.onProgress(52, "导入注册表...");
+                callback.onProgress(52, "还原环境: 导入注册表...");
                 File registryDir = new File(tempDir, "container/registry");
                 if (registryDir.exists()) {
                     File destWineDir = new File(newContainerDir, ".wine");
@@ -504,17 +504,17 @@ public class GameRestorePackageManager {
                             FileUtils.copy(regFile, new File(destWineDir, regFile.getName()));
                             regIdx++;
                             int regProgress = 52 + (int) ((regIdx / (float) Math.max(1, regTotal)) * 8);
-                            callback.onProgress(Math.min(60, regProgress), "导入注册表: " + regFile.getName());
+                            callback.onProgress(Math.min(60, regProgress), "还原环境: 注册表 " + regFile.getName());
                         }
                     }
                 }
             }
-            callback.onProgress(60, "注册表导入完成");
+            callback.onProgress(60, "还原环境: 注册表完成");
 
             // 60-80%：导入游戏文件（含子进度）
             String newExePath = null;
             if (containsGameFiles) {
-                callback.onProgress(62, "导入游戏文件...");
+                callback.onProgress(62, "导入游戏文件: 开始...");
                 File gamefilesDir = new File(tempDir, "gamefiles");
                 if (gamefilesDir.exists()) {
                     File destGamesDir = new File(newContainerDir, ".wine/drive_c/Games");
@@ -529,7 +529,7 @@ public class GameRestorePackageManager {
                                 File destGameDir = new File(destGamesDir, gameDir.getName());
                                 // P2修复8：复制前先回调当前文件名，避免大游戏目录复制期间进度条看似卡住
                                 int preDirP = 62 + (int) ((dirIdx / (float) Math.max(1, dirTotal)) * 18);
-                                callback.onProgress(Math.min(80, preDirP), "解压游戏文件(" + (dirIdx+1) + "/" + dirTotal + "): " + gameDir.getName());
+                                callback.onProgress(Math.min(80, preDirP), "导入游戏文件(" + (dirIdx+1) + "/" + dirTotal + "): " + gameDir.getName());
                                 copyDirectorySimple(gameDir, destGameDir);
                                 if (gameDirName != null && !gameDirName.isEmpty() && gameDir.getName().equals(gameDirName)) {
                                     if (executableName != null && !executableName.isEmpty()) {
@@ -544,7 +544,7 @@ public class GameRestorePackageManager {
                             }
                             dirIdx++;
                             int dirProgress = 62 + (int) ((dirIdx / (float) Math.max(1, dirTotal)) * 18);
-                            callback.onProgress(Math.min(80, dirProgress), "解压游戏文件(" + dirIdx + "/" + dirTotal + "): " + gameDir.getName());
+                            callback.onProgress(Math.min(80, dirProgress), "导入游戏文件(" + dirIdx + "/" + dirTotal + "): " + gameDir.getName());
                         }
                     }
 
@@ -564,10 +564,10 @@ public class GameRestorePackageManager {
                     }
                 }
             }
-            callback.onProgress(80, "游戏文件导入完成");
+            callback.onProgress(80, "导入游戏文件: 完成");
 
             // 80-90%：创建快捷方式
-            callback.onProgress(83, "创建快捷方式...");
+            callback.onProgress(83, "创建快捷方式: 生成中...");
             boolean shortcutCreated = false;
             if (shortcutJson != null) {
                 shortcutCreated = createShortcutFromJson(context, newContainer, shortcutJson, gameName, newExePath);
@@ -588,11 +588,11 @@ public class GameRestorePackageManager {
                     FileUtils.copy(iconFile, new File(iconDir64, iconSafeName + ext));
                 }
             }
-            callback.onProgress(90, "快捷方式创建完成");
+            callback.onProgress(90, "创建快捷方式: 完成");
 
             // 90-100%：完成
-            callback.onProgress(95, "正在完成...");
-            callback.onProgress(100, "导入完成");
+            callback.onProgress(95, "收尾: 正在完成...");
+            callback.onProgress(100, "收尾: 导入完成");
             return new int[]{newId, shortcutCreated ? 1 : 0};
 
         } finally {

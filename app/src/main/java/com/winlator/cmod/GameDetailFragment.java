@@ -289,83 +289,27 @@ public class GameDetailFragment extends Fragment {
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-        menu.add(0, 3001, 0, "导出游戏数据包");
-        menu.add(0, 3002, 1, "导出容器配置");
+        menu.add(0, 3001, 0, "导出配置分享");
+        menu.add(0, 3002, 1, "导出完整数据包");
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == 3001) {
-            showExportDialog();
+            exportConfigOnly();
             return true;
         } else if (item.getItemId() == 3002) {
-            exportContainerConfig();
+            showExportDialog();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void exportContainerConfig() {
-        final Context context = getContext();
-        if (context == null || shortcut == null || shortcut.container == null) return;
-
-        try {
-            // v6：分类存储 - 检测游戏来源（本地/Steam）
-            String source = "local";
-            String pathLower = (shortcut.path != null) ? shortcut.path.toLowerCase() : "";
-            String nameLower = shortcut.name.toLowerCase();
-            if (pathLower.contains("steam") || nameLower.contains("steam")) {
-                source = "steam";
-            }
-
-            // 读取配置并添加gameName/source字段
-            File configFile = shortcut.container.getConfigFile();
-            String configContent = com.winlator.cmod.core.FileUtils.readString(configFile);
-            JSONObject configJson = new JSONObject(configContent);
-            configJson.put("gameName", shortcut.name);
-            configJson.put("source", source);
-
-            // 分类目录：Configs/local/ 或 Configs/steam/
-            File exportDir = new File("/storage/emulated/0/Download/Winlator/Configs/" + source + "/");
-            if (!exportDir.exists()) exportDir.mkdirs();
-
-            // 文件名：本地用游戏名，Steam用AppID（从名称中提取数字或用游戏名）
-            String fileName;
-            if ("steam".equals(source)) {
-                // 尝试从名称提取AppID（纯数字），否则用游戏名
-                String appId = shortcut.name.replaceAll("[^0-9]", "");
-                fileName = (appId.isEmpty() ? shortcut.name : appId) + ".json";
-            } else {
-                fileName = shortcut.name + ".json";
-            }
-            // 清理文件名中的非法字符
-            fileName = fileName.replaceAll("[^a-zA-Z0-9\\u4e00-\\u9fa5._-]", "_");
-
-            File destFile = new File(exportDir, fileName);
-
-            // 导出游戏图标：复制到配置同目录，文件名与JSON同名不同后缀（.png）
-            String iconFileName = fileName.substring(0, fileName.length() - ".json".length()) + ".png";
-            if (shortcut.iconFile != null && shortcut.iconFile.isFile()) {
-                try {
-                    File iconDest = new File(exportDir, iconFileName);
-                    com.winlator.cmod.core.FileUtils.copy(shortcut.iconFile, iconDest);
-                    configJson.put("iconFile", iconFileName);
-                } catch (Exception ignored) {}
-            }
-
-            com.winlator.cmod.core.FileUtils.writeString(destFile, configJson.toString(2));
-            Toast.makeText(context, "容器配置已导出: " + source + "/" + fileName, Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(context, "导出失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
-
     /**
-     * v3：导出选项对话框（仅配置 / 包含游戏本体）
-     */
-    /**
-     * v6：导出确认窗口（RadioButton单选组 + 确认按钮）
+     * v8：导出确认窗口（两类语义：配置分享 / 完整数据包）
      * 展示：游戏信息卡 + 容器配置差异 + 快捷方式独立配置 + 导出类型单选
+     * 配置分享(.json)：容器配置+快捷方式配置+组件清单，体积最小，适合分享
+     * 完整数据包(.grp.zip)：配置+游戏文件，可选包含Wine运行环境，可整包迁移
      */
     private void showExportDialog() {
         final Context context = getContext();
@@ -421,37 +365,40 @@ public class GameDetailFragment extends Fragment {
         radioGroup.setOrientation(android.widget.LinearLayout.VERTICAL);
 
         android.widget.RadioButton rb1 = new android.widget.RadioButton(context);
-        rb1.setText("仅配置（容器配置+注册表+快捷方式，最小）");
+        rb1.setText("配置分享(.json) — 容器配置+快捷方式+组件清单，体积最小，适合分享");
         rb1.setId(android.view.View.generateViewId());
 
         android.widget.RadioButton rb2 = new android.widget.RadioButton(context);
-        rb2.setText("含游戏本体（+游戏文件目录，约" + gameSizeStr + "）");
+        rb2.setText("完整数据包(.grp.zip) — 配置+游戏文件，可整包迁移到其他设备");
         rb2.setId(android.view.View.generateViewId());
 
-        android.widget.RadioButton rb3 = new android.widget.RadioButton(context);
-        rb3.setText("完整数据包（+Wine运行环境，约" + wineSizeStr + "，可任意设备还原）");
-        rb3.setId(android.view.View.generateViewId());
+        // Wine运行环境勾选框：仅选数据包时可用
+        final android.widget.CheckBox cbWineRuntime = new android.widget.CheckBox(context);
+        cbWineRuntime.setText("包含Wine运行环境（可任意设备还原，体积约" + wineSizeStr + "）");
+        cbWineRuntime.setEnabled(false);
 
         radioGroup.addView(rb1);
         radioGroup.addView(rb2);
-        radioGroup.addView(rb3);
-        radioGroup.check(rb2.getId()); // 默认选中"含游戏本体"
+        radioGroup.addView(cbWineRuntime);
+        radioGroup.check(rb1.getId()); // 默认选中配置分享
+        radioGroup.setOnCheckedChangeListener((group, checkedId) ->
+                cbWineRuntime.setEnabled(checkedId == rb2.getId()));
         layout.addView(radioGroup);
 
         scrollView.addView(layout);
 
         new AlertDialog.Builder(context)
-                .setTitle("导出游戏数据包")
+                .setTitle("导出")
                 .setView(scrollView)
                 .setPositiveButton("确认导出", (dialog, which) -> {
                     int checkedId = radioGroup.getCheckedRadioButtonId();
                     if (checkedId == rb1.getId()) {
-                        // 仅配置：导出新格式JSON
+                        // 配置分享：导出新格式JSON
                         exportConfigOnly();
                     } else {
-                        boolean includeGameFiles = (checkedId == rb2.getId() || checkedId == rb3.getId());
-                        boolean includeWineRuntime = (checkedId == rb3.getId());
-                        doExport(includeGameFiles, true, includeWineRuntime);
+                        // 完整数据包
+                        boolean includeWineRuntime = cbWineRuntime.isChecked();
+                        doExport(true, true, includeWineRuntime);
                     }
                 })
                 .setNegativeButton("取消", null)

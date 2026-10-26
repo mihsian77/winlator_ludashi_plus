@@ -206,11 +206,11 @@ public class ConfigCenterFragment extends Fragment {
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-        // BUG6/BUG7：导入数据包用下载箭头图标，导入容器配置用保存图标，文字清晰可见
+        // BUG6/BUG7：导入数据包用下载箭头图标，导入配置分享用保存图标，文字清晰可见
         MenuItem importPkgItem = menu.add(0, 100, 0, "导入游戏数据包");
         importPkgItem.setIcon(android.R.drawable.stat_sys_download);
         importPkgItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
-        MenuItem importItem = menu.add(0, 101, 1, "导入容器配置");
+        MenuItem importItem = menu.add(0, 101, 1, "导入配置分享");
         importItem.setIcon(android.R.drawable.ic_menu_save);
         importItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     }
@@ -1617,6 +1617,31 @@ public class ConfigCenterFragment extends Fragment {
         if (wineBundled) dep.append("数据包内置 ✓");
         else if (wineInstalled) dep.append("已安装 ✓");
         else dep.append("未安装 ✗");
+        // v8：完整组件清单检测（运行时组件由容器启动时自动安装，仅作状态提示）
+        String gpuDriver = pkgInfo.graphicsDriver != null ? pkgInfo.graphicsDriver : "";
+        String dxw = pkgInfo.dxwrapper != null ? pkgInfo.dxwrapper : "";
+        String box64 = pkgInfo.box64Version != null ? pkgInfo.box64Version : "";
+        String fex = pkgInfo.fexcoreVersion != null ? pkgInfo.fexcoreVersion : "";
+        boolean hasRuntimeComponents = false;
+        StringBuilder rt = new StringBuilder();
+        if (!gpuDriver.isEmpty() && !"zink".equals(gpuDriver) && !"freedreno".equals(gpuDriver)
+                && !"system".equals(gpuDriver)) {
+            rt.append("图形驱动: ").append(gpuDriver).append("（启动时自动安装）\n");
+            hasRuntimeComponents = true;
+        }
+        if (!dxw.isEmpty() && !dxw.contains("dxvk") && !dxw.contains("vkd3d")) {
+            rt.append("DXWrapper: ").append(dxw).append("（启动时自动安装）\n");
+            hasRuntimeComponents = true;
+        }
+        if (!box64.isEmpty()) {
+            rt.append("Box64: ").append(box64).append("（启动时自动安装）\n");
+            hasRuntimeComponents = true;
+        }
+        if (!fex.isEmpty()) {
+            rt.append("FEXCore: ").append(fex).append("（启动时自动安装）\n");
+            hasRuntimeComponents = true;
+        }
+        if (hasRuntimeComponents) dep.append('\n').append(rt.toString().trim());
         depView.setText(dep.toString());
         depView.setTextSize(13);
         depView.setLineSpacing(dp(2), 1.25f);
